@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prakhar (0x0ff5et) — Cloud Security & Write-ups</title>
+<meta name="description" content="Prakhar (0x0ff5et) — cloud security projects, technical write-ups, and security research.">
+<meta property="og:title" content="Prakhar (0x0ff5et) — Cloud Security & Write-ups">
+<meta property="og:description" content="Prakhar (0x0ff5et) — cloud security projects, technical write-ups, and security research.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Figtree:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+<canvas id="fx" aria-hidden="true"></canvas>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="logo" href="index.html">0x0ff5et</a>
+  <nav aria-label="Main"><a href="index.html" aria-current="page">Home</a><a href="posts.html">Posts</a><a href="about.html">About</a></nav>
+  <div class="hud" aria-live="polite"><b id="lv">Lv 1</b><div class="bar" role="progressbar" aria-label="Experience" id="bar"><i id="fill"></i></div><span class="xp" id="xpn">0 XP</span></div>
+</div><div class="prog" id="prog"></div></header>
+<main id="main" class="wrap">
+  <section class="hero">
+    <span class="tag">Cloud Security · Security Research</span>
+    <h1>Hey, I’m <em>Prakhar</em></h1>
+    <p class="lead" id="lead" data-text="Cloud security researcher building, testing, and documenting practical security projects">Cloud security researcher building, testing, and documenting practical security projects</p>
+    <a class="btn" href="https://x.com/0x0ff5et" target="_blank" rel="noopener">X ↗</a>
+    <a class="btn alt" href="https://www.linkedin.com/in/0x0ff5et/" target="_blank" rel="noopener">LinkedIn ↗</a>
+  </section>
+  <section>
+    <h2>Recent Posts</h2>
+    <p class="sub">Clear a write-up to earn XP.</p>
+    <div class="grid">
+      <a class="q" href="aws-iam-project.html" data-slug="aws-iam-project" data-tags="AWS|IAM">
+        <span class="cat">AWS · Cloud Security · IAM</span>
+        <h3>Enhance Cloud Security with AWS IAM</h3>
+        <p>A hands-on project separating Dev and Prod EC2 access using resource tags, least-privilege permissions, and positive and negative testing.</p>
+        <div class="foot"><span>Project write-up · AWS IAM</span><span class="reward">+100 XP</span></div>
+        <span class="go">Read write-up ↗</span>
+      </a>
+      <a class="q" href="aws-secrets-manager-project.html" data-slug="aws-secrets-manager-project" data-tags="AWS|Secrets Manager">
+        <span class="cat">AWS · Cloud Security · Secrets Manager</span>
+        <h3>Secure Secrets with AWS Secrets Manager</h3>
+        <p>A practical walkthrough of replacing hardcoded AWS credentials with Secrets Manager, retrieving them in Python, and checking that sensitive values are removed from public code and Git history.</p>
+        <div class="foot"><span>Project write-up · AWS Secrets Manager</span><span class="reward">+100 XP</span></div>
+        <span class="go">Read write-up ↗</span>
+      </a>
+    </div>
+    <a class="more" href="posts.html">Browse all posts →</a>
+    <div class="badges" id="badges" aria-label="Badges"></div>
+  </section>
+</main>
+<div class="wrap"><footer>
+  <span>© Prakhar (0x0ff5et) Cloud Security · Security Research</span>
+  <span class="links"><a href="https://www.linkedin.com/in/0x0ff5et/" target="_blank" rel="noopener">LinkedIn</a><a href="https://x.com/0x0ff5et" target="_blank" rel="noopener">X</a><a href="#" id="reset">Reset progress</a></span>
+</footer></div>
+<div id="toast" aria-live="polite"></div>
+<div id="lb" class="lb" hidden><img alt=""></div>
+<script src="script.js"></script>
+</body>
+</html>

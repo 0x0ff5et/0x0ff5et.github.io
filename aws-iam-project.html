@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enhance Cloud Security with AWS IAM — Prakhar (0x0ff5et)</title>
+<meta name="description" content="A hands-on project separating Dev and Prod EC2 access using resource tags, least-privilege permissions, and positive and negative testing.">
+<meta property="og:title" content="Enhance Cloud Security with AWS IAM — Prakhar (0x0ff5et)">
+<meta property="og:description" content="A hands-on project separating Dev and Prod EC2 access using resource tags, least-privilege permissions, and positive and negative testing.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Figtree:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="article" data-post="aws-iam-project" data-stages="5">
+<canvas id="fx" aria-hidden="true"></canvas>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="logo" href="index.html">0x0ff5et</a>
+  <nav aria-label="Main"><a href="index.html">Home</a><a href="posts.html" aria-current="page">Posts</a><a href="about.html">About</a></nav>
+  <div class="hud" aria-live="polite"><b id="lv">Lv 1</b><div class="bar" role="progressbar" aria-label="Experience" id="bar"><i id="fill"></i></div><span class="xp" id="xpn">0 XP</span></div>
+</div><div class="prog" id="prog"></div></header>
+<main id="main" class="wrap art">
+  <p class="crumbs"><a href="posts.html">Posts</a> / AWS · Cloud Security · IAM</p>
+  <h1 class="h1s">Enhance Cloud Security with AWS IAM</h1>
+  <p class="lead2">A hands-on project separating Dev and Prod EC2 access using resource tags, least-privilege permissions, and positive and negative testing.</p>
+  <div class="quest"><div><b>Quest stages</b><span id="stcount">0 of 5 cleared</span></div>
+    <ol><li data-s="s1"><a href="#s1">Launch EC2 instances</a></li><li data-s="s2"><a href="#s2">Create an IAM policy</a></li><li data-s="s3"><a href="#s3">Create an AWS account alias</a></li><li data-s="s4"><a href="#s4">Create IAM users and user groups</a></li><li data-s="s5"><a href="#s5">Test your intern’s access</a></li></ol></div>
+  <article class="prose">
+<p>Scenario: you’ve just joined a team as a DevOps engineer. There are two tasks. First, boost computing power to match increased traffic to the website. Second, onboard an intern, who should get the right permissions to contribute while the company’s resources stay secure.</p>
+<figure><img src="assets/iam/01.jpg" alt="Architecture: an IAM user group, a policy, and two EC2 instances (development and production)." loading="lazy"><figcaption>Architecture: an IAM user group, a policy, and two EC2 instances (development and production).</figcaption></figure>
+<h2 id="s1" class="stage">Launch EC2 instances</h2>
+<p>Start with the first task and launch two EC2 instances: one for production and one for development.</p>
+<ol><li>Log in to the AWS Management Console and open the <code>EC2</code> console from the search bar.</li><li>Switch your <code>Region</code> to the one closest to you.</li></ol>
+<figure><img src="assets/iam/02.jpg" alt="Searching for EC2 in the console." loading="lazy"><figcaption>Searching for EC2 in the console.</figcaption></figure>
+<figure><img src="assets/iam/04.jpg" alt="Choosing a region." loading="lazy"><figcaption>Choosing a region.</figcaption></figure>
+<p>In the EC2 console choose <strong>Launch instance</strong> and set up the production instance:</p>
+<ul><li>Name: <code>amazon-prod-0x0ff5et</code></li><li>Add a tag with Key <code>Env</code> and Value <code>production</code></li><li>AMI: a free tier eligible option; instance type: free tier eligible (<code>t2.micro</code>)</li><li>Key pair (login): <strong>Proceed without a key pair</strong>; network settings stay on their defaults</li></ul>
+<figure><img src="assets/iam/05.jpg" alt="Name and tags section." loading="lazy"><figcaption>Name and tags section.</figcaption></figure>
+<figure><img src="assets/iam/06.jpg" alt="Choosing a free tier eligible AMI." loading="lazy"><figcaption>Choosing a free tier eligible AMI.</figcaption></figure>
+<figure><img src="assets/iam/07.jpg" alt="Free tier eligible instance type." loading="lazy"><figcaption>Free tier eligible instance type.</figcaption></figure>
+<figure><img src="assets/iam/08.jpg" alt="Key pair set to proceed without a key pair." loading="lazy"><figcaption>Key pair set to proceed without a key pair.</figcaption></figure>
+<figure><img src="assets/iam/09.jpg" alt="Default network settings. AWS warns that SSH from 0.0.0.0/0 is open to all IP addresses." loading="lazy"><figcaption>Default network settings. AWS warns that SSH from 0.0.0.0/0 is open to all IP addresses.</figcaption></figure>
+<div class="note">AWS shows a warning here: rules with source 0.0.0.0/0 allow all IP addresses to reach the instance. That is acceptable for a short lab, but restrict it to known IPs for anything real.</div>
+<p>Launch it, then create one more instance for the development environment: Name <code>amazon-dev-0x0ff5et</code> with tag <code>Env</code> = <code>development</code>. Open <strong>Instances</strong> in the left navigation and refresh until both appear.</p>
+<figure><img src="assets/iam/10.jpg" alt="The first instance launched successfully." loading="lazy"><figcaption>The first instance launched successfully.</figcaption></figure>
+<figure><img src="assets/iam/11.jpg" alt="Both instances running." loading="lazy"><figcaption>Both instances running.</figcaption></figure>
+<p>Select an instance and open the <strong>Tags</strong> tab to confirm the tags you defined.</p>
+<figure><img src="assets/iam/13.jpg" alt="Tags on the production instance." loading="lazy"><figcaption>Tags on the production instance.</figcaption></figure>
+<h2 id="s2" class="stage">Create an IAM policy</h2>
+<p>The intern should have permission on the development instance but not the production instance. You don’t want them to accidentally shut down the platform or push changes to production while they are just testing things.</p>
+<ol><li>Open the <code>IAM</code> console and choose <strong>Policies</strong>, then <strong>Create policy</strong>.</li><li>Switch the policy editor to <strong>JSON</strong> and replace all existing code with the policy below.</li></ol>
+<figure><img src="assets/iam/15.jpg" alt="The JSON policy editor." loading="lazy"><figcaption>The JSON policy editor.</figcaption></figure>
+<div class="code"><span class="lang">json</span><pre><code>{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;ec2:*&quot;,
+      &quot;Resource&quot;: &quot;*&quot;,
+      &quot;Condition&quot;: {
+        &quot;StringEquals&quot;: {
+          &quot;ec2:ResourceTag/Env&quot;: &quot;development&quot;
+        }
+      }
+    },
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;ec2:Describe*&quot;,
+      &quot;Resource&quot;: &quot;*&quot;
+    },
+    {
+      &quot;Effect&quot;: &quot;Deny&quot;,
+      &quot;Action&quot;: [
+        &quot;ec2:DeleteTags&quot;,
+        &quot;ec2:CreateTags&quot;
+      ],
+      &quot;Resource&quot;: &quot;*&quot;
+    }
+  ]
+}</code></pre></div>
+<ul><li><strong>Allow ec2:*</strong> only on resources tagged <code>Env = development</code>. The tag is what scopes the permission.</li><li><strong>Allow ec2:Describe*</strong> on everything, so the intern can see instances in the console.</li><li><strong>Deny create and delete tags</strong>, so the intern can’t retag a production instance as development and give themselves access. An explicit deny always wins.</li></ul>
+<figure><img src="assets/iam/16.jpg" alt="The policy pasted into the editor." loading="lazy"><figcaption>The policy pasted into the editor.</figcaption></figure>
+<p>Name it <code>AmazonDevEnvironmentPolicy</code>, with the description <code>IAM Policy for Amazon development environment</code>, then choose <strong>Create policy</strong>.</p>
+<h2 id="s3" class="stage">Create an AWS account alias</h2>
+<p>The intern can’t wait to start, so make the sign-in easier. In the IAM console open the <strong>Dashboard</strong>, choose <strong>Create</strong> under Account Alias, and enter the preferred alias:</p>
+<div class="code"><span class="lang">text</span><pre><code>amazon-alias-0x0ff5et</code></pre></div>
+<p>Your sign-in URL now uses the alias instead of the account ID, so it is much easier to find and log in.</p>
+<h2 id="s4" class="stage">Create IAM users and user groups</h2>
+<p>The new intern has no way to log in yet. You wouldn’t share your own account details, because you have access to the production instances and they shouldn’t.</p>
+<ol><li>Choose <strong>User groups</strong>, then <strong>Create group</strong>. Name: <code>amazon-dev-group</code>. Attach <code>AmazonDevEnvironmentPolicy</code>, then create the group.</li><li>Choose <strong>Users</strong>, then <strong>Create user</strong>. User name: <code>amazondev0x0ff5et</code>.</li><li>Tick <strong>Provide user access to the AWS Management Console</strong> and uncheck <strong>Users must create a new password at next sign-in</strong>.</li><li>On the permissions step add the user to <code>amazon-dev-group</code>, then choose <strong>Next</strong> and <strong>Create user</strong>.</li></ol>
+<figure><img src="assets/iam/19.jpg" alt="Creating amazon-dev-group and attaching the policy." loading="lazy"><figcaption>Creating amazon-dev-group and attaching the policy.</figcaption></figure>
+<figure><img src="assets/iam/20.jpg" alt="The user group was created." loading="lazy"><figcaption>The user group was created.</figcaption></figure>
+<figure><img src="assets/iam/21.jpg" alt="Specifying the user details." loading="lazy"><figcaption>Specifying the user details.</figcaption></figure>
+<figure><img src="assets/iam/22.jpg" alt="Review and create." loading="lazy"><figcaption>Review and create.</figcaption></figure>
+<figure><img src="assets/iam/23.jpg" alt="Console sign-in details for the new user." loading="lazy"><figcaption>Console sign-in details for the new user.</figcaption></figure>
+<h2 id="s5" class="stage">Test your intern’s access</h2>
+<p>Before handing over the login, test the intern’s access. You want the right access to the development instance and none to production.</p>
+<ol><li>Copy the console sign-in URL, keep that tab open, and open the URL in an <strong>incognito window</strong>.</li><li>Sign in with the alias, the user name <code>amazondev0x0ff5et</code> and the console password.</li></ol>
+<figure><img src="assets/iam/24.jpg" alt="Signing in as the IAM user." loading="lazy"><figcaption>Signing in as the IAM user.</figcaption></figure>
+<figure><img src="assets/iam/25.jpg" alt="As a new user some dashboard panels already show Access denied." loading="lazy"><figcaption>As a new user some dashboard panels already show Access denied.</figcaption></figure>
+<h3>Negative test: stop the production instance</h3>
+<p>In the EC2 console, in the same region, select the production instance and choose <strong>Instance state</strong>, then <strong>Stop instance</strong>.</p>
+<figure><img src="assets/iam/26.jpg" alt="Trying to stop the production instance." loading="lazy"><figcaption>Trying to stop the production instance.</figcaption></figure>
+<figure><img src="assets/iam/27.jpg" alt="Confirming the stop." loading="lazy"><figcaption>Confirming the stop.</figcaption></figure>
+<figure><img src="assets/iam/28.jpg" alt="Failed: the user is not authorized to perform ec2:StopInstances on the production instance." loading="lazy"><figcaption>Failed: the user is not authorized to perform ec2:StopInstances on the production instance.</figcaption></figure>
+<h3>Positive test: stop the development instance</h3>
+<p>Select <code>amazon-dev-0x0ff5et</code>, open <strong>Actions</strong>, then <strong>Manage instance state</strong>, choose <strong>Stop</strong>, and confirm.</p>
+<figure><img src="assets/iam/29.jpg" alt="The development instance stops successfully." loading="lazy"><figcaption>The development instance stops successfully.</figcaption></figure>
+  </article>
+  <div class="win" id="end"><h2>Quest complete</h2><p>The intern can stop the development instance and is denied on production. Tag-based conditions plus an explicit deny on tagging gave least privilege, and you proved it with both a positive and a negative test.</p><a class="btn" href="posts.html">Pick the next quest</a></div>
+</main>
+<div class="wrap"><footer>
+  <span>© Prakhar (0x0ff5et) Cloud Security · Security Research</span>
+  <span class="links"><a href="https://www.linkedin.com/in/0x0ff5et/" target="_blank" rel="noopener">LinkedIn</a><a href="https://x.com/0x0ff5et" target="_blank" rel="noopener">X</a><a href="#" id="reset">Reset progress</a></span>
+</footer></div>
+<div id="toast" aria-live="polite"></div>
+<div id="lb" class="lb" hidden><img alt=""></div>
+<script src="script.js"></script>
+</body>
+</html>
