@@ -6,7 +6,7 @@
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
   /* ---- game config: add a slug here when you publish a new post ---- */
-  var SLUGS = ["aws-iam-project", "aws-secrets-manager-project"];
+  var SLUGS = ["aws-iam-project", "aws-secrets-manager-project", "aws-security-monitoring-project"];
   var POST_XP = 100, STAGE_XP = 5, PER = 100;
   var TITLES = ["Recruit", "Scout", "Analyst", "Hunter", "Defender", "Root"];
   var BADGES = [
