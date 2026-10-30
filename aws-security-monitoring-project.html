@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build a Security Monitoring System — Prakhar (0x0ff5et)</title>
+<meta name="description" content="Detect when a secret is accessed: log it with CloudTrail, count it with a CloudWatch metric filter, alarm on it, and get an email through SNS, then troubleshoot every link in the chain.">
+<meta property="og:title" content="Build a Security Monitoring System — Prakhar (0x0ff5et)">
+<meta property="og:description" content="Detect when a secret is accessed: log it with CloudTrail, count it with a CloudWatch metric filter, alarm on it, and get an email through SNS, then troubleshoot every link in the chain.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Figtree:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="article" data-post="aws-security-monitoring-project" data-stages="6">
+<canvas id="fx" aria-hidden="true"></canvas>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="logo" href="index.html">0x0ff5et</a>
+  <nav aria-label="Main"><a href="index.html">Home</a><a href="posts.html" aria-current="page">Posts</a><a href="about.html">About</a></nav>
+  <div class="hud" aria-live="polite"><b id="lv">Lv 1</b><div class="bar" role="progressbar" aria-label="Experience" id="bar"><i id="fill"></i></div><span class="xp" id="xpn">0 XP</span></div>
+</div><div class="prog" id="prog"></div></header>
+<main id="main" class="wrap art">
+  <p class="crumbs"><a href="posts.html">Posts</a> / AWS · Cloud Security · Monitoring</p>
+  <h1 class="h1s">Build a Security Monitoring System</h1>
+  <p class="lead2">Detect when a secret is accessed: log it with CloudTrail, count it with a CloudWatch metric filter, alarm on it, and get an email through SNS, then troubleshoot every link in the chain.</p>
+  <div class="quest"><div><b>Quest stages</b><span id="stcount">0 of 6 cleared</span></div>
+    <ol><li data-s="s1"><a href="#s1">Step 1: Create a secret</a></li><li data-s="s2"><a href="#s2">Step 2: Configure CloudTrail</a></li><li data-s="s3"><a href="#s3">Step 3: Generate Secret Access Events</a></li><li data-s="s4"><a href="#s4">Step 4: Track Secrets Access Using CloudWatch Metrics</a></li><li data-s="s5"><a href="#s5">Step 5: Create CloudWatch Alarm and SNS Topic</a></li><li data-s="s6"><a href="#s6">Step 6: Test Email Notification</a></li></ol></div>
+  <article class="prose">
+<figure><img src="assets/monitoring/00.jpg" alt="System" loading="lazy"></figure>
+<h2 id="s1" class="stage">Step 1: Create a secret</h2>
+<p>A Secret in AWS Secret Manager. This secret will be something we want to monitor access to.</p>
+<figure><img src="assets/monitoring/01.jpg" alt="monitor access to." loading="lazy"></figure>
+<h3>Create a New secret</h3>
+<ul><li>Log in to the AWS management console as your IAM Admin user</li><li>In the AWS Management console search bar at the top, search for <code>Secrets</code> <code>Manager</code> and select secret manager from the result</li></ul>
+<figure><img src="assets/monitoring/02.jpg" alt="Manager and select secret manager from the result" loading="lazy"></figure>
+<ul><li>Select store a new secret to begin creating your secret</li><li>Under choose secret type, select other type of secret</li></ul>
+<figure><img src="assets/monitoring/03.jpg" alt="Under choose secret type, select other type of secret" loading="lazy"></figure>
+<h3>Enter your Secret</h3>
+<ul><li>In the key/value tab, enter <code>The Secret is</code> as the key</li><li>Enter a random secret or hot take that you have as the value, for example <code>I</code> <code>need 3 coffees a day to function</code> or <code>rice is the best carb</code></li></ul>
+<figure><img src="assets/monitoring/04.jpg" alt="Screenshot" loading="lazy"></figure>
+<p>We'll keep the default encryption key setting</p>
+<figure><img src="assets/monitoring/05.jpg" alt="We'll keep the default encryption key setting" loading="lazy"></figure>
+<ul><li>Select next</li><li>Welcome to the configure secret page</li><li>Under secret name, enter <code>TopSecretInfo</code></li></ul>
+<figure><img src="assets/monitoring/06.jpg" alt="Under secret name, enter TopSecretInfo" loading="lazy"></figure>
+<ul><li>Under Description - optional, add a description like <code>Secret created for Amazon's project on Building a Monitoring System</code></li></ul>
+<figure><img src="assets/monitoring/07.jpg" alt="project on Building a Monitoring System" loading="lazy"></figure>
+<ul><li>Click next</li><li>Click next again to skip the configuration rotation</li></ul>
+<figure><img src="assets/monitoring/08.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Let's review your secret set up:</h3>
+<ul><li>Secret type: Other type of secret</li><li>Encryption key: <code>aws/secretsmanager</code></li><li>Secret name: <code>TopSecretInfo</code></li><li>Description: Secret created for Amazon's project on Building a Monitoring System</li><li>Secret replication: Disabled</li><li>Automatic rotation: Disabled</li></ul>
+<figure><img src="assets/monitoring/09.jpg" alt="Automatic rotation: Disabled" loading="lazy"></figure>
+<figure><img src="assets/monitoring/10.jpg" alt="Screenshot" loading="lazy"></figure>
+<p>Click store at the bottom of the review page</p>
+<figure><img src="assets/monitoring/11.jpg" alt="Click store at the bottom of the review page" loading="lazy"></figure>
+<ul><li>You should see a green banner at the top</li><li>In the green banner, select view details</li></ul>
+<figure><img src="assets/monitoring/12.jpg" alt="In the green banner, select view details" loading="lazy"></figure>
+<p>You can now see your newly created secret <code>TopSecretInfo</code></p>
+<figure><img src="assets/monitoring/13.jpg" alt="Screenshot" loading="lazy"></figure>
+<h2 id="s2" class="stage">Step 2: Configure CloudTrail</h2>
+<p>CloudTrail is a monitoring service, it records events that happened in your AWS account, like creating resources, updating a name or setting and accessing secrets in secret manager.</p>
+<figure><img src="assets/monitoring/14.jpg" alt="secrets in secret manager." loading="lazy"></figure>
+<h3>Create a New Trail</h3>
+<p>In the AWS management console, head to the <code>CloudTrail</code> console</p>
+<figure><img src="assets/monitoring/15.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>From the left hand navigation panel,  select Trails</li><li>Select create trail to start setting up a new trail</li></ul>
+<figure><img src="assets/monitoring/16.jpg" alt="Select create trail to start setting up a new trail" loading="lazy"></figure>
+<ul><li>Welcome to the choose trail attributes page! let's create a trail</li><li>Under Trail name,  enter <code>secrets-manager-trail</code></li></ul>
+<figure><img src="assets/monitoring/17.jpg" alt="Under Trail name,  enter secrets-manager-trail" loading="lazy"></figure>
+<p>In the Storage location section, select Create new s3 bucket</p>
+<figure><img src="assets/monitoring/18.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>Under Trail log bucket and folder,  enter a unique bucket name:</li><li><code>amazon-secrets-manager-trail-yourinitials</code></li></ul>
+<figure><img src="assets/monitoring/19.jpg" alt="amazon-secrets-manager-trail-yourinitials" loading="lazy"></figure>
+<p>Keep the other default settings</p>
+<figure><img src="assets/monitoring/20.jpg" alt="Keep the other default settings" loading="lazy"></figure>
+<p>Scroll down and select next</p>
+<h3>Configure log events</h3>
+<p>On the choose log events page, ensure management events is selected under event type</p>
+<figure><img src="assets/monitoring/21.jpg" alt="Screenshot" loading="lazy"></figure>
+<p>Under API activity, keep both read and write checked</p>
+<figure><img src="assets/monitoring/22.jpg" alt="Under API activity, keep both read and write checked" loading="lazy"></figure>
+<ul><li>Check Exclude AWS KMS events</li><li>Check Exclude Amazon RDS Data API events</li></ul>
+<figure><img src="assets/monitoring/23.jpg" alt="Check Exclude Amazon RDS Data API events" loading="lazy"></figure>
+<ul><li>Select Next</li><li>Review your trail setup on the review and create page</li></ul>
+<figure><img src="assets/monitoring/24.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Review: choose trail attributes</h3>
+<ul><li>Trail name: <code>secrets-manager-trail</code></li><li>Multi-region trail: Yes</li><li>Apply trail to my organization: Not enabled</li><li>Trail log location: <code>amazon-secrets-manager-trail-yourinitials/AWSLogs</code></li><li>Log file SSE-KMS encryption: Not enabled</li><li>Log file validation: Enabled</li><li>SNS notification delivery: Disabled</li></ul>
+<figure><img src="assets/monitoring/25.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Review: choose log events</h3>
+<ul><li>API activity: All</li><li>Exclude AWS KMS events: Yes</li><li>Exclude Amazon RDS Data API events: Yes</li></ul>
+<figure><img src="assets/monitoring/26.jpg" alt="Exclude Amazon RDS Data API events: Yes" loading="lazy"></figure>
+<p>Click Create trail</p>
+<figure><img src="assets/monitoring/27.jpg" alt="Click Create trail" loading="lazy"></figure>
+<h2 id="s3" class="stage">Step 3: Generate Secret Access Events</h2>
+<figure><img src="assets/monitoring/28.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Access your secret</h3>
+<ul><li>Navigate back to the <code>Secrets Manager</code> console</li><li>Pick your <code>TopSecretInfo</code> secret</li><li>On the secret details page, scroll down to the overview section</li><li>Select retrieve secret value</li></ul>
+<figure><img src="assets/monitoring/29.jpg" alt="Select retrieve secret value" loading="lazy"></figure>
+<p>You should now see the secret value displayed</p>
+<figure><img src="assets/monitoring/30.jpg" alt="You should now see the secret value displayed" loading="lazy"></figure>
+<p>Select close to close the secret value display</p>
+<h3>Access your secret over aws CLI</h3>
+<ul><li>Turns out, the console is not the only way to access a secret</li><li>Open AWS cloudshell - click on the cloudshell icon in the AWS management console's top navigation bar</li><li>The cloudshell terminal should now be opened and ready (it can take up to 30 seconds)</li></ul>
+<figure><img src="assets/monitoring/31.jpg" alt="seconds)" loading="lazy"></figure>
+<ul><li>In the cloudshell terminal, run the following command</li><li>Make sure to replace <code>your-region-code</code> at the end of the command. Use the region code you see when you select your region dropdown</li></ul>
+<div class="code"><span class="lang">bash</span><pre><code>aws secretsmanager get-secret-value --secret-id &quot;TopSecretInfo&quot; --region ap-south-1</code></pre></div>
+<p>The command should run successfully and give you the secret's value in JSON format</p>
+<figure><img src="assets/monitoring/32.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Analyse your cloudtrail events</h3>
+<ul><li>Head to the <code>CloudTrail</code> console again</li><li>You should now be on the CloudTrail dashboard</li><li>In the left navigation pane, select Event history</li><li>Welcome to the event history page</li></ul>
+<figure><img src="assets/monitoring/33.jpg" alt="Welcome to the event history page" loading="lazy"></figure>
+<p>Under lookup attributes, select the dropdown and choose event source</p>
+<figure><img src="assets/monitoring/34.jpg" alt="Screenshot" loading="lazy"></figure>
+<p>In the search bar next to event source, enter <code>secretsmanager.amazonaws.com</code></p>
+<figure><img src="assets/monitoring/35.jpg" alt="In the search bar next to event source, enter secretsmanager.amazonaws.com" loading="lazy"></figure>
+<ul><li>You should now see events related to <code>secretsmanager.amazonaws.com</code></li><li>Scroll through the event list - check for an event called <code>GetSecretValue</code>, This events means your secret's value was retrieved or used</li></ul>
+<figure><img src="assets/monitoring/36.jpg" alt="events means your secret's value was retrieved or used" loading="lazy"></figure>
+<p>CloudTrail records an event when someone accesses your secret</p>
+<h2 id="s4" class="stage">Step 4: Track Secrets Access Using CloudWatch Metrics</h2>
+<p>We'll start by sending all of cloudtrail's logs to cloudwatch. Once it's in cloudwatch, we can set up helpful tools like cloudwatch metrics and alarms that can trigger notifications based on events</p>
+<figure><img src="assets/monitoring/37.jpg" alt="can trigger notifications based on events" loading="lazy"></figure>
+<h3>Analyse your cloudwatch logs</h3>
+<ul><li>Still in your <code>cloudtrail</code> console, select Trails in the left navigation pane</li><li>Select your trail <code>secrets-manager-trail</code></li><li>You should now be seeing the details of your trail</li></ul>
+<figure><img src="assets/monitoring/38.jpg" alt="You should now be seeing the details of your trail" loading="lazy"></figure>
+<ul><li>Scroll down to the cloudwatch logs section</li><li>Select Edit</li><li>Check the enabled checkbox for cloudwatch logs</li></ul>
+<figure><img src="assets/monitoring/39.jpg" alt="Check the enabled checkbox for cloudwatch logs" loading="lazy"></figure>
+<ul><li>Select New log group</li><li>Under log group name, enter <code>amazon-secretsmanager-loggroup</code></li></ul>
+<figure><img src="assets/monitoring/40.jpg" alt="Under log group name, enter amazon-secretsmanager-loggroup" loading="lazy"></figure>
+<ul><li>Under IAM role, select New</li><li>Under Role name, enter <code>CloudTrailRoleForCloudWatchLogs_secrets-manager-trail</code></li></ul>
+<figure><img src="assets/monitoring/41.jpg" alt="Under Role name, enter CloudTrailRoleForCloudWatchLogs_secrets-manager-trail" loading="lazy"></figure>
+<p>Select save changes to save the new cloudwatch logs setup</p>
+<h3>Verify your cloudwatch logs</h3>
+<ul><li>Head to the <code>cloudwatch</code> console, let's verify that cloudtrail is really passing the logs to a new log group</li><li>In the left navigation pane, expand logs and select log groups</li><li>Welcome to the log groups page</li><li>In the log groups page, search for and select <code>amazon-secretsmanager-loggroup</code></li></ul>
+<figure><img src="assets/monitoring/42.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>You might see multiple log streams. Pick any one of them. If you only see one, that's fine too</li><li>You should now see heaps of logs inside the stream. If you don't see rows and rows of logs straight away, you might need to wait a few minutes and refresh your page first</li></ul>
+<figure><img src="assets/monitoring/43.jpg" alt="your page first" loading="lazy"></figure>
+<h3>Create Metric Filter</h3>
+<ul><li>Head back to your log group</li><li>At the top of your log group, select Actions and then Create metric filter from the dropdown menu</li></ul>
+<p>Welcome to the Define patterns page, This is where we tell cloudwatch about the kind of actions we're looking for</p>
+<figure><img src="assets/monitoring/44.jpg" alt="the kind of actions we're looking for" loading="lazy"></figure>
+<p>In the filter pattern field, enter <code>GetSecretValue</code></p>
+<figure><img src="assets/monitoring/45.jpg" alt="In the filter pattern field, enter GetSecretValue" loading="lazy"></figure>
+<ul><li>We'll get to know the test pattern section in Step 6 for now, let's focus on creating the metric filter</li><li>Select next</li><li>For the filter name, let's use <code>GetSecretsValue</code></li><li>Under metric details, name the metric namespace: <code>SecurityMetrics</code></li></ul>
+<ul><li>Metric name: Enter <code>Secret is accessed</code></li><li>Metric value: Enter <code>1</code></li><li>Default value: Enter <code>0</code></li><li>Select Next - let's review our work</li></ul>
+<p><strong>Welcome to the Review and create page for the metric filter</strong></p>
+<ul><li>Filter pattern: <code>GetSecretValue</code></li><li>Filter name: <code>GetSecretValue</code></li><li>Metric name: <code>Secret is accessed</code></li><li>Metric namespace: <code>SecurityMetrics</code></li><li>Applied on transformed logs: -</li><li>Metric value: <code>1</code></li><li>Default value: <code>0</code></li><li>Unit: -</li></ul>
+<figure><img src="assets/monitoring/46.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>Select Create metric filter to finalize and create your metric filter</li><li>You should see a green banner at the top confirming metric filter creation</li></ul>
+<figure><img src="assets/monitoring/47.jpg" alt="You should see a green banner at the top confirming metric filter creation" loading="lazy"></figure>
+<h2 id="s5" class="stage">Step 5: Create CloudWatch Alarm and SNS Topic</h2>
+<p>A CloudWatch alarm that triggers when our <code>SecretIsAccessed</code> metric exceeds a threshold. We'll also set up an SNS topic to receive email notifications when the alarm is triggered.</p>
+<figure><img src="assets/monitoring/48.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Create cloudwatch alarm</h3>
+<ul><li>Still in your cloudwatch alarm's page, select the metric filters tab</li><li>Scroll down and check the box next to the <code>GetSecretValue</code> metric filter</li></ul>
+<figure><img src="assets/monitoring/49.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>Select create alarm</li><li>Now, welcome to the cloudwatch alarm setup!</li></ul>
+<figure><img src="assets/monitoring/50.jpg" alt="Screenshot" loading="lazy"></figure>
+<p><strong>Under Metric, let's use the following values</strong></p>
+<ul><li>Namespace: <code>SecurityMetrics</code></li><li>Metric name: <code>Secret is accessed</code></li><li>Statistic: Average</li><li>Period: 5 minutes</li></ul>
+<figure><img src="assets/monitoring/51.jpg" alt="Period: 5 minutes" loading="lazy"></figure>
+<ul><li>Under conditions, set threshold type to static</li><li>Set whenever SecretIsAccessed is… to Greater/Equal</li></ul>
+<p>Set than… to <code>1</code></p>
+<figure><img src="assets/monitoring/52.jpg" alt="Set than… to 1" loading="lazy"></figure>
+<ul><li>Select Next</li><li>We're now on the configure actions page, This is how we tell cloudwatch what to do when we want to be alerted</li><li>Under notification, keep the default setting In alarm</li></ul>
+<figure><img src="assets/monitoring/53.jpg" alt="Under notification, keep the default setting In alarm" loading="lazy"></figure>
+<ul><li>Under the heading Select a notification to the following SNS topic, select create new topic</li><li>Under Topic name, enter <code>SecurityAlarms</code></li></ul>
+<p>Under Email endpoints, enter your email address that you can access. In the next step, you'll check this inbox for emails (when the alarm goes off)</p>
+<figure><img src="assets/monitoring/54.jpg" alt="next step, you'll check this inbox for emails (when the alarm goes off)" loading="lazy"></figure>
+<ul><li>Select create topic</li><li>The SNS topic should now be created</li><li>Select Next</li><li>Under alarm name, enter <code>Secret is accessed</code></li><li>Under alarm description,  enter a description like <code>This alarm goes off whenever a</code> <code>secret in Secrets Manager is accessed.</code></li></ul>
+<figure><img src="assets/monitoring/55.jpg" alt="secret in Secrets Manager is accessed." loading="lazy"></figure>
+<p>Select next to review and create the alarm</p>
+<p><strong>Let's review your alarm set up</strong></p>
+<ul><li>Namespace: <code>SecurityMetrics</code></li><li>Metric name: <code>Secret is accessed</code></li><li>Statistic: <code>Average</code></li><li>Period: <code>5 minutes</code></li></ul>
+<figure><img src="assets/monitoring/56.jpg" alt="Period: 5 minutes" loading="lazy"></figure>
+<ul><li>Threshold type: Static</li><li>Whenever Secret is accessed is: Greater/Equal (>=)</li><li>Threshold value: <code>1</code></li><li>Notification: When In alarm, send a notification to <code>SecurityAlarms</code></li></ul>
+<figure><img src="assets/monitoring/57.jpg" alt="Notification: When In alarm, send a notification to SecurityAlarms" loading="lazy"></figure>
+<ul><li>Name: <code>Secret is accessed</code></li><li>Description: This alarm goes off whenever a secret in Secrets Manager is accessed.</li></ul>
+<figure><img src="assets/monitoring/58.jpg" alt="Screenshot" loading="lazy"></figure>
+<ul><li>Select Create alarm</li><li>You should see a green banner at the top confirming that your alarm was created</li><li>There's also blue banner below it, telling us that a subscription is pending confirmation</li></ul>
+<figure><img src="assets/monitoring/59.jpg" alt="confirmation" loading="lazy"></figure>
+<h3>Confirm SNS subscription</h3>
+<ul><li>Check your created alarm's row too - there's a Warning sign under the Actions heading.</li><li>Select the warning sign.</li></ul>
+<ul><li>Check your email inbox for an email from AWS notifications with the subject <code>AWS notification - Subscription Confirmation</code> This email is to confirm your subscription to the SNS topic you created</li></ul>
+<figure><img src="assets/monitoring/60.jpg" alt="This email is to confirm your subscription to the SNS topic you created" loading="lazy"></figure>
+<ul><li>Select confirm subscription</li><li>You should now see a subscription confirmed page in your browser</li></ul>
+<figure><img src="assets/monitoring/61.jpg" alt="You should now see a subscription confirmed page in your browser" loading="lazy"></figure>
+<h2 id="s6" class="stage">Step 6: Test Email Notification</h2>
+<p>Let's test if our email notification system works as expected. We'll trigger the alarm by accessing the secret again and check if we receive an email notification.</p>
+<figure><img src="assets/monitoring/62.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Trigger Alarm</h3>
+<p>Head back to the Secrets Manager console. Let's try to trigger our own alarm by retrieving the secret value again</p>
+<figure><img src="assets/monitoring/63.jpg" alt="by retrieving the secret value again" loading="lazy"></figure>
+<p>Head to your <code>TopSecretInfo</code> secret again</p>
+<figure><img src="assets/monitoring/64.jpg" alt="Head to your TopSecretInfo secret again" loading="lazy"></figure>
+<ul><li>Select Retrieve secret value</li><li>Secret Exposed again</li></ul>
+<figure><img src="assets/monitoring/65.jpg" alt="Screenshot" loading="lazy"></figure>
+<h3>Troubleshoot your notification setup</h3>
+<p>There are a few places in our monitoring system where things could be breaking</p>
+<ul><li>CloudTrail: Didn't record the <code>GetSecretValue</code> event.</li><li>CloudTrail: Isn't sending logs to CloudWatch.</li><li>CloudWatch Metric Filter: Isn't filtering logs correctly.</li><li>CloudWatch Alarm: Isn't triggering an action.</li><li>SNS: Isn't delivering emails to you.</li></ul>
+<h3>CloudTrail</h3>
+<p>Do we think CloudTrail actually recorded the event? What if CloudTrail missed it, and didn't know you've retrieved your secret's value?</p>
+<figure><img src="assets/monitoring/66.jpg" alt="SNS: Isn't delivering emails to you." loading="lazy"></figure>
+<ul><li>Head to the <code>CloudTrail</code> console again</li><li>You should now be on the cloudtrail dashboard</li><li>In the navigation pane, select event history</li><li>Under Lookup attributes, select the dropdown and choose Event source</li><li>In the search bar next to Event source, enter <code>secretsmanager.amazonaws.com</code></li><li>You should see at least one <code>GetSecretValue</code> event at the top of the list, which matches the time you viewed your secret. There should be more than one row, since it's now your second time retrieving a secret</li></ul>
+<h3>Log Delivery</h3>
+<p>Could it be that CloudTrail isn't sending Logs to CloudWatch?</p>
+<figure><img src="assets/monitoring/67.jpg" alt="Could it be that CloudTrail isn't sending Logs to CloudWatch?" loading="lazy"></figure>
+<ul><li>Stay in the <code>CloudTrail</code> console</li><li>Select Trails in the left navigation pane</li><li>Click on your <code>secrets-manager-trail</code></li><li>Check the Last log file delivered timestamp - it should be recent if logs are being delivered properly!</li><li>Scroll down to the CloudWatch Logs section</li></ul>
+<ul><li>Make sure it shows the correct log group name i.e. <code>amazon-secretsmanager-loggroup</code></li><li>That should mean CloudTrail is sending logs over to CloudWatch</li></ul>
+<h3>Metric Filter</h3>
+<p>What if something went wrong with the CloudWatch metric filter? Maybe the filter is rejecting the events we're actually trying to capture</p>
+<figure><img src="assets/monitoring/68.jpg" alt="is rejecting the events we're actually trying to capture" loading="lazy"></figure>
+<ul><li>Head to the <code>CloudWatch</code> console</li><li>In the left navigation pane, select Log groups</li><li>Find and click on your <code>amazon-secretsmanager-loggroup</code></li><li>Select the Metric filters tab</li><li>Check the checkbox for your filter <code>GetSecretsValue</code> and select Edit</li><li>Let's put your filter to the test! Here's a bunch of test log events. Enter them in the Log event messages panel</li><li>Select Test Pattern</li><li>If you scroll further down the results, you'll notice that they record an event called <code>GetSecretValue</code></li></ul>
+<p>This tells us the metric filter does correctly filter for events where your secret is accessed</p>
+<h3>Alarm Configuration</h3>
+<p>Maybe your CloudWatch alarm isn't getting triggered properly?</p>
+<p>Let's see if the alarm can be triggered at all</p>
+<figure><img src="assets/monitoring/69.jpg" alt="Let's see if the alarm can be triggered at all" loading="lazy"></figure>
+<h3>Trigger the alarm manually</h3>
+<ul><li>Open AWS Cloudshell</li><li>First, let's learn about how to write a CLI command for manually triggering our alarm</li></ul>
+<div class="code"><span class="lang">bash</span><pre><code>aws cloudwatch set-alarm-state help</code></pre></div>
+<ul><li>Gotcha! Let's manually set the alarm to ALARM state</li><li>First, run <code>q</code> in the CloudWatch terminal to quit 'reading' mode</li><li>Next, let's trigger our alarm manually</li></ul>
+<div class="code"><span class="lang">bash</span><pre><code>aws cloudwatch set-alarm-state \
+  --alarm-name &quot;Secret is accessed&quot; \
+  --state-value ALARM \
+  --state-reason &quot;Manually triggered for testing&quot;</code></pre></div>
+<p>Check your email inbox. There should be a notification email that your alarm is in alarm, and <code>Manually triggered for testing</code> as the reason</p>
+<h3>Adjust your alarm settings</h3>
+<p>Let's check a few critical settings</p>
+<ul><li>Head back to the <code>CloudWatch</code> console</li><li>Select All alarms from the left hand navigation panel</li><li>Check the checkbox for your alarm</li><li>Select the Actions dropdown, and select Edit</li><li>On the alarm details page, look at the Statistic field</li><li>Aha - maybe the statistic should be set to Sum, not Average or any other statistic!</li><li>This is crucial because:</li><li>Sum adds up all occurrences of secret access in the period (what we want)</li><li>Average would calculate an average rate (i.e. the average number of times our secret was accessed per second over the 5 minute period), which might never cross our threshold</li><li>Change the Statistic dropdown from Average to Sum</li><li>You can also update the Period from 5 minutes to 1 minute, so we can trigger the alarm even faster when we see the Secret's value</li><li>Check that the Threshold type is set to Static</li><li>Confirm that the condition is Greater/Equal than 1</li></ul>
+<ul><li>Select Skip to Preview and create</li><li>In the review page, make sure Statistic is now Sum</li><li>Select Update alarm at the bottom of the page</li></ul>
+<h3>SNS Subscription</h3>
+<ul><li>Since we've confirmed our email's subscription to SNS, surely that means you should be receiving emails?</li><li>Let's confirm this by going directly to SNS</li></ul>
+<figure><img src="assets/monitoring/70.jpg" alt="Let's confirm this by going directly to SNS" loading="lazy"></figure>
+<ul><li>Head to the <code>SNS</code> console</li><li>In the left hand navigation panel, select Topics</li><li>Select your topic i.e. <code>SecurityAlarms</code></li><li>Select Publish message. Let's try to manually send a message to all the emails subscribed to this topic</li><li>Add a message Subject like <code>Testing</code></li><li>In the message body, enter a quick message like <code>Wassup</code></li><li>That's it! Select Publish message</li><li>You should see a confirmation message at the top of the page</li></ul>
+<ul><li>Let's dash back to your inbox - it's the moment of truth! Can SNS send emails to you?</li><li>Message received</li></ul>
+<figure><img src="assets/monitoring/71.jpg" alt="Ooo, message received" loading="lazy"></figure>
+<p>This means SNS is actually set up properly</p>
+<figure><img src="assets/monitoring/72.jpg" alt="This means SNS is actually set up properly" loading="lazy"></figure>
+  </article>
+  <div class="win" id="end"><h2>Quest complete</h2><p>Reading the secret now leaves a CloudTrail event, CloudWatch counts it, the alarm fires, and SNS emails you. You also tested each link on its own: CloudTrail, the metric filter, the alarm and the SNS topic.</p><a class="btn" href="posts.html">Pick the next quest</a></div>
+</main>
+<div class="wrap"><footer>
+  <span>© Prakhar (0x0ff5et) Cloud Security · Security Research</span>
+  <span class="links"><a href="https://www.linkedin.com/in/0x0ff5et/" target="_blank" rel="noopener">LinkedIn</a><a href="https://x.com/0x0ff5et" target="_blank" rel="noopener">X</a><a href="#" id="reset">Reset progress</a></span>
+</footer></div>
+<div id="toast" aria-live="polite"></div>
+<div id="lb" class="lb" hidden><img alt=""></div>
+<script src="script.js"></script>
+</body>
+</html>
